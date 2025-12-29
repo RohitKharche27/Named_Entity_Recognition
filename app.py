@@ -3,42 +3,30 @@ import spacy
 from spacy.pipeline import EntityRuler
 
 # -----------------------------
-# Load blank English model
+# Create blank English NLP
 # -----------------------------
 nlp = spacy.blank("en")
 
 # -----------------------------
-# Add EntityRuler
+# Add EntityRuler (rule-based NER)
 # -----------------------------
-ruler = nlp.add_pipe("entity_ruler")
+ruler = nlp.add_pipe("entity_ruler", config={"overwrite_ents": True})
 
 # -----------------------------
-# Default entity patterns (18 entities - basic)
-# -----------------------------
-default_patterns = [
-    {"label": "PERSON", "pattern": [{"IS_TITLE": True}, {"IS_TITLE": True, "OP": "?"}]},
-    {"label": "ORG", "pattern": [{"IS_TITLE": True, "OP": "+"}]},
-    {"label": "GPE", "pattern": [{"IS_TITLE": True}]},
-    {"label": "TIME", "pattern": [{"LIKE_NUM": True}, {"LOWER": {"IN": ["am", "pm"]}}]},
-    {"label": "MONEY", "pattern": [{"LIKE_NUM": True}, {"LOWER": {"IN": ["rs", "₹", "$"]}}]},
-    {"label": "PERCENT", "pattern": [{"LIKE_NUM": True}, {"TEXT": "%"}]},
-    {"label": "CARDINAL", "pattern": [{"LIKE_NUM": True}]},
-    {"label": "ORDINAL", "pattern": [{"LOWER": {"IN": ["first", "second", "third"]}}]},
-    {"label": "QUANTITY", "pattern": [{"LIKE_NUM": True}, {"IS_ALPHA": True}]},
-    {"label": "LANGUAGE", "pattern": [{"LOWER": {"IN": ["english", "hindi", "marathi"]}}]},
-    {"label": "EVENT", "pattern": [{"IS_TITLE": True}, {"LOWER": "day"}]},
-    {"label": "LAW", "pattern": [{"IS_TITLE": True}, {"LOWER": "act"}]},
-    {"label": "WORK_OF_ART", "pattern": [{"IS_TITLE": True}]},
-    {"label": "PRODUCT", "pattern": [{"IS_TITLE": True}]},
-    {"label": "LOC", "pattern": [{"IS_TITLE": True}]},
-    {"label": "NORP", "pattern": [{"IS_TITLE": True}]},
-    {"label": "FAC", "pattern": [{"IS_TITLE": True}]},
-]
-
-# -----------------------------
-# DATE patterns (FIXED ✅)
+# DATE patterns (HIGH PRIORITY)
 # -----------------------------
 date_patterns = [
+    # March 2024
+    {
+        "label": "DATE",
+        "pattern": [
+            {"LOWER": {"IN": [
+                "january","february","march","april","may","june",
+                "july","august","september","october","november","december"
+            ]}},
+            {"LIKE_NUM": True}
+        ]
+    },
 
     # 10 Jan 2025
     {
@@ -55,37 +43,120 @@ date_patterns = [
         ]
     },
 
-    # January 10
+    # 01/01/2025
     {
         "label": "DATE",
-        "pattern": [
-            {"LOWER": {"IN": [
-                "january","february","march","april","may","june",
-                "july","august","september","october","november","december"
-            ]}},
-            {"LIKE_NUM": True}
-        ]
-    },
-
-    # 01/01/2025 or 10-01-2025
-    {
-        "label": "DATE",
-        "pattern": [
-            {"TEXT": {"REGEX": "\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}"}}
-        ]
+        "pattern": [{"TEXT": {"REGEX": "\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}"}}]
     },
 
     # 2025-01-10
     {
         "label": "DATE",
-        "pattern": [
-            {"TEXT": {"REGEX": "\\d{4}-\\d{2}-\\d{2}"}}
-        ]
+        "pattern": [{"TEXT": {"REGEX": "\\d{4}-\\d{2}-\\d{2}"}}]
     }
 ]
 
 # -----------------------------
-# Custom entity patterns
+# STANDARD ENTITY RULES (SAFE)
+# -----------------------------
+standard_patterns = [
+
+    # PERSON (two title-case words only)
+    {
+        "label": "PERSON",
+        "pattern": [{"IS_TITLE": True}, {"IS_TITLE": True}]
+    },
+
+    # ORG (keywords)
+    {
+        "label": "ORG",
+        "pattern": [
+            {"IS_TITLE": True, "OP": "+"},
+            {"LOWER": {"IN": ["inc", "inc.", "ltd", "corp", "corporation"]}}
+        ]
+    },
+
+    # Known organizations
+    {
+        "label": "ORG",
+        "pattern": [{"TEXT": "United"}, {"TEXT": "Nations"}]
+    },
+
+    # FAC
+    {
+        "label": "FAC",
+        "pattern": [{"TEXT": "Giga"}, {"TEXT": "Texas"}]
+    },
+
+    # GPE
+    {
+        "label": "GPE",
+        "pattern": [{"LOWER": {"IN": ["austin", "texas", "berlin"]}}]
+    },
+
+    # PRODUCT
+    {
+        "label": "PRODUCT",
+        "pattern": [{"TEXT": "Model"}, {"LIKE_NUM": True}]
+    },
+
+    # LAW
+    {
+        "label": "LAW",
+        "pattern": [{"IS_TITLE": True, "OP": "+"}, {"LOWER": "act"}]
+    },
+
+    # EVENT
+    {
+        "label": "EVENT",
+        "pattern": [{"IS_TITLE": True, "OP": "+"}, {"LOWER": "summit"}]
+    },
+
+    # WORK_OF_ART
+    {
+        "label": "WORK_OF_ART",
+        "pattern": [{"TEXT": "Mona"}, {"TEXT": "Lisa"}]
+    },
+
+    # LANGUAGE
+    {
+        "label": "LANGUAGE",
+        "pattern": [{"LOWER": {"IN": ["english", "german", "french"]}}]
+    },
+
+    # NORP
+    {
+        "label": "NORP",
+        "pattern": [{"LOWER": {"IN": ["german", "indian", "american"]}}]
+    },
+
+    # MONEY
+    {
+        "label": "MONEY",
+        "pattern": [{"TEXT": {"REGEX": "[$₹]"}}, {"LIKE_NUM": True}, {"LOWER": {"IN": ["million", "billion"]}}]
+    },
+
+    # PERCENT
+    {
+        "label": "PERCENT",
+        "pattern": [{"LIKE_NUM": True}, {"TEXT": "%"}]
+    },
+
+    # TIME
+    {
+        "label": "TIME",
+        "pattern": [{"LIKE_NUM": True}, {"LOWER": {"IN": ["hour", "hours"]}}]
+    },
+
+    # QUANTITY
+    {
+        "label": "QUANTITY",
+        "pattern": [{"LIKE_NUM": True}, {"LOWER": {"IN": ["kilograms", "kg", "centimeters", "cm"]}}]
+    }
+]
+
+# -----------------------------
+# CUSTOM ENTITY RULES
 # -----------------------------
 custom_patterns = [
     {"label": "BANK", "pattern": [{"LOWER": {"IN": ["sbi", "hdfc", "icici", "axis"]}}]},
@@ -95,35 +166,32 @@ custom_patterns = [
     {"label": "TRANSACTION_ID", "pattern": [{"TEXT": {"REGEX": "TXN[0-9A-Z]+"}}]},
     {"label": "DISEASE", "pattern": [{"LOWER": {"IN": ["diabetes", "cancer", "asthma"]}}]},
     {"label": "MEDICINE", "pattern": [{"LOWER": {"IN": ["paracetamol", "insulin", "ibuprofen"]}}]},
-    {"label": "STOCK", "pattern": [{"IS_UPPER": True, "LENGTH": {">=": 3}}]},
+    {"label": "STOCK", "pattern": [{"IS_UPPER": True, "LENGTH": {">=": 3}}]}
 ]
 
 # -----------------------------
-# Add ALL patterns to ruler
+# Add rules in correct order
 # -----------------------------
-ruler.add_patterns(default_patterns + date_patterns + custom_patterns)
+ruler.add_patterns(date_patterns)
+ruler.add_patterns(standard_patterns)
+ruler.add_patterns(custom_patterns)
 
 # -----------------------------
 # Streamlit UI
 # -----------------------------
-st.set_page_config(page_title="Custom NER App", layout="centered")
-
-st.title("🧠 Named Entity Recognition (NER)")
-st.write("Detects **18 spaCy entities + DATE + custom banking, medical & finance entities**")
+st.set_page_config(page_title="NER App", layout="centered")
+st.title("🧠 Named Entity Recognition (Correct Rules)")
 
 text = st.text_area(
     "Enter text",
-    placeholder="Rohit transferred ₹5000 on 10 Jan 2025 using SBI account 1234567890"
+    height=200,
+    placeholder="In March 2024, Elon Musk announced at the Giga Texas factory..."
 )
 
 if st.button("Extract Entities"):
-    if text.strip() == "":
-        st.warning("Please enter text")
+    doc = nlp(text)
+    if not doc.ents:
+        st.warning("No entities found")
     else:
-        doc = nlp(text)
-        if not doc.ents:
-            st.info("No entities found")
-        else:
-            st.success("Entities Found")
-            for ent in doc.ents:
-                st.write(f"🔹 **{ent.text}** → `{ent.label_}`")
+        for ent in doc.ents:
+            st.write(f"🔹 **{ent.text}** → `{ent.label_}`")
