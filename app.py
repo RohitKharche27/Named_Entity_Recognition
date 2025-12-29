@@ -13,14 +13,13 @@ nlp = spacy.blank("en")
 ruler = nlp.add_pipe("entity_ruler")
 
 # -----------------------------
-# spaCy default 18 entities (generic patterns)
+# Default entity patterns (18 entities - basic)
 # -----------------------------
 default_patterns = [
     {"label": "PERSON", "pattern": [{"IS_TITLE": True}, {"IS_TITLE": True, "OP": "?"}]},
     {"label": "ORG", "pattern": [{"IS_TITLE": True, "OP": "+"}]},
     {"label": "GPE", "pattern": [{"IS_TITLE": True}]},
-    {"label": "DATE", "pattern": [{"LIKE_NUM": True}]},
-    {"label": "TIME", "pattern": [{"LIKE_NUM": True}, {"LOWER": "pm"}]},
+    {"label": "TIME", "pattern": [{"LIKE_NUM": True}, {"LOWER": {"IN": ["am", "pm"]}}]},
     {"label": "MONEY", "pattern": [{"LIKE_NUM": True}, {"LOWER": {"IN": ["rs", "₹", "$"]}}]},
     {"label": "PERCENT", "pattern": [{"LIKE_NUM": True}, {"TEXT": "%"}]},
     {"label": "CARDINAL", "pattern": [{"LIKE_NUM": True}]},
@@ -37,6 +36,55 @@ default_patterns = [
 ]
 
 # -----------------------------
+# DATE patterns (FIXED ✅)
+# -----------------------------
+date_patterns = [
+
+    # 10 Jan 2025
+    {
+        "label": "DATE",
+        "pattern": [
+            {"LIKE_NUM": True},
+            {"LOWER": {"IN": [
+                "jan","january","feb","february","mar","march",
+                "apr","april","may","jun","june","jul","july",
+                "aug","august","sep","september",
+                "oct","october","nov","november","dec","december"
+            ]}},
+            {"LIKE_NUM": True}
+        ]
+    },
+
+    # January 10
+    {
+        "label": "DATE",
+        "pattern": [
+            {"LOWER": {"IN": [
+                "january","february","march","april","may","june",
+                "july","august","september","october","november","december"
+            ]}},
+            {"LIKE_NUM": True}
+        ]
+    },
+
+    # 01/01/2025 or 10-01-2025
+    {
+        "label": "DATE",
+        "pattern": [
+            {"TEXT": {"REGEX": "\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}"}}
+        ]
+    },
+
+    # 2025-01-10
+    {
+        "label": "DATE",
+        "pattern": [
+            {"TEXT": {"REGEX": "\\d{4}-\\d{2}-\\d{2}"}}
+        ]
+    }
+]
+
+# -----------------------------
 # Custom entity patterns
 # -----------------------------
 custom_patterns = [
@@ -50,8 +98,10 @@ custom_patterns = [
     {"label": "STOCK", "pattern": [{"IS_UPPER": True, "LENGTH": {">=": 3}}]},
 ]
 
-# Add all patterns
-ruler.add_patterns(default_patterns + custom_patterns)
+# -----------------------------
+# Add ALL patterns to ruler
+# -----------------------------
+ruler.add_patterns(default_patterns + date_patterns + custom_patterns)
 
 # -----------------------------
 # Streamlit UI
@@ -59,11 +109,11 @@ ruler.add_patterns(default_patterns + custom_patterns)
 st.set_page_config(page_title="Custom NER App", layout="centered")
 
 st.title("🧠 Named Entity Recognition (NER)")
-st.write("Detects **18 spaCy entities + custom banking, medical & finance entities**")
+st.write("Detects **18 spaCy entities + DATE + custom banking, medical & finance entities**")
 
 text = st.text_area(
     "Enter text",
-    placeholder="Rohit transferred ₹5000 from SBI account 123456789012 using TXN8899 on 10 Jan 2025"
+    placeholder="Rohit transferred ₹5000 on 10 Jan 2025 using SBI account 1234567890"
 )
 
 if st.button("Extract Entities"):
